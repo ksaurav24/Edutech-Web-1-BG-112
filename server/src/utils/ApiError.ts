@@ -48,7 +48,7 @@ export class ApiError extends Error {
       ...(this.meta ? { meta: this.meta } : {}),
       timestamp: this.timestamp,
       ...(this.requestId ? { requestId: this.requestId } : {}),
-      // ...(includeStack && this.stack ? { stack: this.stack } : {}),
+      ...(includeStack && this.stack ? { stack: this.stack } : {}),
     };
   }
 

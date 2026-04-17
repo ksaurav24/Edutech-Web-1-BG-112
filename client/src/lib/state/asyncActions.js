@@ -297,6 +297,30 @@ export async function markAllReadAction() {
   }
 }
 
+export async function uploadAvatarAction(file) {
+  const { state, render, toast } = getRuntime();
+
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+
+  await new Promise((resolve, reject) => {
+    reader.onload = resolve;
+    reader.onerror = reject;
+  });
+
+  const base64DataUrl = reader.result;
+
+  try {
+    const data = await profileApi.uploadAvatar(base64DataUrl);
+    applyUserFromPayload(data);
+    toast('Photo updated!');
+  } catch (error) {
+    toast(normalizeMessage(error, 'Unable to upload photo'), 'error');
+  } finally {
+    render();
+  }
+}
+
 export function logoutAction() {
   const { state, render } = getRuntime();
   clearAuthSession();

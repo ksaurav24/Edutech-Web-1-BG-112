@@ -13,6 +13,7 @@ import {
     removeGoalAction,
     addSessionAction,
     saveProfileAction,
+    uploadAvatarAction,
     markAllReadAction,
     logoutAction,
 } from './src/lib/state/asyncActions.js';

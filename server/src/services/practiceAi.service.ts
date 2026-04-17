@@ -44,6 +44,7 @@ export interface PracticeAiOutput {
 
 const ALLOWED_DIFFICULTIES: PracticeEvaluation['difficulty'][] = ['beginner', 'intermediate', 'advanced'];
 const MAX_PROMPT_MESSAGES = 6;
+const FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 function toObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -125,6 +126,21 @@ function getGeminiClient(): GoogleGenerativeAI {
   return new GoogleGenerativeAI(env.geminiApiKey);
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function isModelNotFoundError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes('[404') || message.includes('not found') || message.includes('is not found');
+}
+
+function isRateLimitError(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes('[429') || message.includes('too many requests') || message.includes('quota');
+}
+
 function buildPrompt(input: PracticeAiInput): string {
   const chatWindow = input.conversation.slice(-MAX_PROMPT_MESSAGES);
   const conversation = chatWindow.map((message) => `${message.role.toUpperCase()}: ${message.content}`).join('\n');
@@ -174,22 +190,48 @@ export async function generatePracticeReply(input: PracticeAiInput): Promise<Pra
     throw new BadRequestError('Topic is required');
   }
 
-  const model = getGeminiClient().getGenerativeModel({ model: env.geminiModel });
+  const gemini = getGeminiClient();
+  const modelCandidates = [env.geminiModel, ...FALLBACK_MODELS.filter((model) => model !== env.geminiModel)];
   const prompt = buildPrompt({
     ...input,
     topic,
     userAnswer: input.userAnswer.trim(),
   });
 
-  let rawText = '';
-  try {
-    const result = await model.generateContent(prompt);
-    rawText = result.response.text();
-  } catch (error) {
-    throw new InternalServerError('Failed to generate practice response from Gemini', [], undefined, {
-      cause: error,
-    });
+  let lastError: unknown = null;
+  for (const modelName of modelCandidates) {
+    try {
+      const model = gemini.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text();
+      return parseOutput(rawText);
+    } catch (error) {
+      lastError = error;
+      if (!isModelNotFoundError(error) && !isRateLimitError(error)) {
+        break;
+      }
+    }
   }
 
-  return parseOutput(rawText);
+  const message = getErrorMessage(lastError);
+  if (isModelNotFoundError(lastError)) {
+    throw new InternalServerError(
+      `Configured Gemini model "${env.geminiModel}" is unavailable for this API key. Set GEMINI_MODEL to a supported model like "gemini-2.5-flash".`,
+      [],
+      { providerMessage: message },
+      { cause: lastError },
+    );
+  }
+  if (isRateLimitError(lastError)) {
+    throw new InternalServerError(
+      'Gemini API quota/rate limit reached. Try again shortly or use a different model quota tier.',
+      [],
+      { providerMessage: message },
+      { cause: lastError },
+    );
+  }
+
+  throw new InternalServerError('Failed to generate practice response from Gemini', [], { providerMessage: message }, {
+    cause: lastError,
+  });
 }

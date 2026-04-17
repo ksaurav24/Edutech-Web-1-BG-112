@@ -36,16 +36,6 @@ const streams: StreamEntry[] = [
   },
 ];
 
-if (!env.isProd) {
-  streams.push({
-    level: env.logLevel as pino.Level,
-    stream: pino.transport({
-      target: 'pino-pretty',
-      options: { colorize: true, translateTime: 'SYS:HH:MM:ss.l', singleLine: false },
-    }),
-  });
-}
-
 const baseOptions: LoggerOptions = {
   level: env.logLevel,
   base: { service: 'backend', env: env.nodeEnv, pid: process.pid },

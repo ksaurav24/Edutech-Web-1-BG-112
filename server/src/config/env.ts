@@ -45,7 +45,7 @@ export const env = Object.freeze({
   cloudinaryApiSecret: optional('CLOUDINARY_API_SECRET', ''),
   cloudinaryFolder: optional('CLOUDINARY_FOLDER', 'studypro'),
   geminiApiKey: optional('GEMINI_API_KEY', ''),
-  geminiModel: optional('GEMINI_MODEL', 'gemini-1.5-flash'),
+  geminiModel: optional('GEMINI_MODEL', 'gemini-2.5-flash'),
 });
 
 export type Env = typeof env;

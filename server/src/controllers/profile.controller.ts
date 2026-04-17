@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import User from '../models/user.model';
 import { ApiResponse } from '../utils/ApiResponse';
 import { BadRequestError, NotFoundError } from '../utils/ApiError';
+import { uploadImage } from '../services/cloudinary';
+import { env } from '../config/env';
 
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced'] as const;
 const THEMES = ['light', 'dark'] as const;
@@ -73,6 +75,31 @@ export function createProfileController() {
 
         const { password, refreshToken, resetPasswordToken, resetPasswordExpiresAt, __v, ...profile } = user as any;
         return ApiResponse.ok(res, profile, 'Preferences updated');
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    uploadAvatar: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const userId = req.auth!.userId;
+        const avatar = req.body?.avatar;
+
+        if (typeof avatar !== 'string' || !avatar.startsWith('data:image/')) {
+          throw new BadRequestError('avatar must be a base64 image data URL');
+        }
+
+        const secure_url = await uploadImage(avatar, env.cloudinaryFolder);
+
+        const user = await User.findByIdAndUpdate(
+          userId,
+          { $set: { avatar: secure_url } },
+          { new: true, runValidators: true },
+        ).lean();
+        if (!user) throw new NotFoundError('User not found');
+
+        const { password, refreshToken, resetPasswordToken, resetPasswordExpiresAt, __v, ...profile } = user as any;
+        return ApiResponse.ok(res, profile, 'Avatar updated');
       } catch (err) {
         return next(err);
       }

@@ -13,6 +13,6 @@ RUN npm run build && npm prune --omit=dev && npm cache clean --force
 
 ENV NODE_ENV=production
 
-EXPOSE 3000
+EXPOSE 8000
 
 CMD ["node", "dist/server.js"]

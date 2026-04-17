@@ -316,11 +316,11 @@ function renderGoals() {
     
     let goalsHtml = state.goals.map((goal, i) => `
         <div class="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-          <button onclick="toggleGoal(${goal.id})" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${goal.done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'}">
+          <button onclick="toggleGoal('${goal.id}')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${goal.done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'}">
             ${goal.done ? '<i data-lucide="check" class="text-white w-3 h-3"></i>' : ''}
           </button>
           <span class="flex-1 text-sm ${goal.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}">${goal.text}</span>
-          <button onclick="removeGoal(${goal.id})" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all cursor-pointer">
+          <button onclick="removeGoal('${goal.id}')" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all cursor-pointer">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </div>

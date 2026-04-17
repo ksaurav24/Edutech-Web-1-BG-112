@@ -498,7 +498,16 @@ function renderProfile() {
                 `}
             </div>
             <div class="flex items-center gap-5 mb-6">
-                <div class="w-20 h-20 rounded-2xl bg-indigo-500 flex items-center justify-center text-white text-2xl font-bold">${u.name.charAt(0)}</div>
+                <div class="relative w-20 h-20 flex-shrink-0">
+                  ${state.user.avatar
+                    ? `<img src="${state.user.avatar}" alt="avatar" class="w-20 h-20 rounded-2xl object-cover">`
+                    : `<div class="w-20 h-20 rounded-2xl bg-indigo-500 flex items-center justify-center text-white text-2xl font-bold">${u.name.charAt(0)}</div>`
+                  }
+                  <label for="avatarInput" class="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center cursor-pointer shadow-md transition-colors">
+                    <i data-lucide="camera" class="w-3.5 h-3.5 text-white"></i>
+                  </label>
+                  <input id="avatarInput" type="file" accept="image/*" class="hidden" onchange="handleAvatarChange(this)">
+                </div>
                 <div><p class="font-bold text-lg dark:text-white">${u.name}</p><p class="text-sm text-slate-500">${u.email}</p></div>
             </div>
             ${mainContent}
@@ -526,6 +535,11 @@ window.toggleProfileInterest = (i) => {
     render();
 }
 window.toggleTheme = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; render(); }
+window.handleAvatarChange = async (input) => {
+    const file = input.files?.[0];
+    if (!file) return;
+    await uploadAvatarAction(file);
+};
 
 // --- Shell Sub-components --- //
 function renderSidebar(isMobile = false) {

@@ -89,14 +89,16 @@ export function createProfileController() {
           throw new BadRequestError('avatar must be a base64 image data URL');
         }
 
-        const secure_url = await uploadImage(avatar, env.cloudinaryFolder);
+        const existing = await User.findById(userId).lean();
+        if (!existing) throw new NotFoundError('User not found');
+
+        const secureUrl = await uploadImage(avatar, env.cloudinaryFolder);
 
         const user = await User.findByIdAndUpdate(
           userId,
-          { $set: { avatar: secure_url } },
+          { $set: { avatar: secureUrl } },
           { new: true, runValidators: true },
         ).lean();
-        if (!user) throw new NotFoundError('User not found');
 
         const { password, refreshToken, resetPasswordToken, resetPasswordExpiresAt, __v, ...profile } = user as any;
         return ApiResponse.ok(res, profile, 'Avatar updated');

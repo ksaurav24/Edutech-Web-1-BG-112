@@ -11,7 +11,7 @@ export function createApp(db?: Connection): Application {
   const app = express();
   
   app.use(cors({
-    origin: "https://comforting-mochi-d4220f.netlify.app/",
+    origin: "*",
     credentials: true,
   }));
 

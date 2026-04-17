@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/HP/.claude-personal/**)",
+      "Read(//c/Users/HP/.agents/skills/**)",
+      "Read(//c/Users/HP/.claude-personal/plugins/**)"
+    ]
+  }
+}

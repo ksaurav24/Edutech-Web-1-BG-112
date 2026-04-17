@@ -11,8 +11,8 @@ export function createApp(db?: Connection): Application {
   const app = express();
   
   app.use(cors({
-    origin: "*",
-    credentials: true,
+    origin: ["https://comforting-mochi-d4220f.netlify.app/", "http://127.0.0.1:3000/"],
+    // credentials: true,
   }));
 
   app.use(express.json({ limit: '5mb' }));

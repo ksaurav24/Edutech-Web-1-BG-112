@@ -314,6 +314,8 @@ Edutech-Web-1-BG-112/
    CLOUDINARY_NAME=your-cloudinary-name
    CLOUDINARY_API_KEY=your-api-key
    CLOUDINARY_API_SECRET=your-api-secret
+   GEMINI_API_KEY=your-gemini-api-key
+   GEMINI_MODEL=gemini-1.5-flash
    EMAIL_HOST=smtp.gmail.com
    EMAIL_PORT=587
    EMAIL_USER=your-email@gmail.com
@@ -357,6 +359,48 @@ http://localhost:3000/api/v1
 - `POST /sessions` - Create a new study session
 - `PUT /sessions/:id` - Update a session
 - `DELETE /sessions/:id` - Delete a session
+
+### Practice Endpoints
+- `POST /practice/chat` - Generate topic-based practice coaching with profile-aware evaluation
+
+Example request:
+```json
+{
+  "topic": "JavaScript",
+  "customTopic": "",
+  "userAnswer": "A closure remembers variables from outer scope.",
+  "conversation": [
+    { "role": "assistant", "content": "What is a closure?" }
+  ]
+}
+```
+
+Example response:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Practice response generated",
+  "data": {
+    "topic": "JavaScript",
+    "assistantMessage": "Good start! You identified lexical scope correctly.",
+    "evaluation": {
+      "score": 78,
+      "strengths": ["Correctly mentions outer scope"],
+      "improvements": ["Explain retained bindings after parent function returns"],
+      "idealAnswer": "A closure is a function bundled with references to its lexical environment.",
+      "difficulty": "intermediate"
+    },
+    "nextQuestion": "Can you give one real-world closure use case?",
+    "contextUsed": {
+      "skillLevel": "Intermediate",
+      "interests": ["Web Dev", "AI"],
+      "streak": 7,
+      "totalHours": 142
+    }
+  }
+}
+```
 
 ### Profile Endpoints
 - `GET /profile` - Get user profile

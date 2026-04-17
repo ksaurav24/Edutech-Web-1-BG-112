@@ -3,6 +3,7 @@ import { goalsApi } from '../api/goalsApi.js';
 import { sessionsApi } from '../api/sessionsApi.js';
 import { profileApi } from '../api/profileApi.js';
 import { notificationsApi } from '../api/notificationsApi.js';
+import { practiceApi } from '../api/practiceApi.js';
 import { clearAuthSession } from '../api/httpClient.js';
 
 const runtime = {
@@ -317,6 +318,55 @@ export async function uploadAvatarAction(file) {
   } catch (error) {
     toast(normalizeMessage(error, 'Unable to upload photo'), 'error');
   } finally {
+    render();
+  }
+}
+
+export async function submitPracticeAction() {
+  const { state, render, toast } = getRuntime();
+  const selectedTopic = String(state.practiceForm.selectedTopic || '').trim();
+  const customTopic = String(state.practiceForm.customTopic || '').trim();
+  const resolvedTopic = customTopic || selectedTopic;
+  const answer = String(state.practiceForm.answer || '').trim();
+
+  if (!resolvedTopic) {
+    toast('Select a topic first', 'error');
+    return;
+  }
+  if (!answer && state.practiceForm.conversation.length > 0) {
+    toast('Enter your answer before submitting', 'error');
+    return;
+  }
+
+  state.practiceForm.loading = true;
+  render();
+  try {
+    const payload = {
+      topic: selectedTopic,
+      customTopic,
+      userAnswer: answer,
+      conversation: state.practiceForm.conversation.slice(-6).map((message) => ({
+        role: message.role,
+        content: message.content,
+      })),
+    };
+
+    const data = await practiceApi.chat(payload);
+    if (answer) {
+      state.practiceForm.conversation.push({ role: 'user', content: answer });
+    }
+    state.practiceForm.conversation.push({
+      role: 'assistant',
+      content: data?.assistantMessage || data?.nextQuestion || 'Let us continue.',
+    });
+    state.practiceForm.latestResponse = data || null;
+    state.practiceForm.answer = '';
+    state.practiceForm.submitted = true;
+    toast(answer ? 'Answer evaluated' : 'Practice question ready');
+  } catch (error) {
+    toast(normalizeMessage(error, 'Unable to submit practice answer'), 'error');
+  } finally {
+    state.practiceForm.loading = false;
     render();
   }
 }

@@ -6,6 +6,7 @@ import { goalsRouter } from './goals.routes';
 import { sessionsRouter } from './sessions.routes';
 import { profileRouter } from './profile.routes';
 import { notificationsRouter } from './notifications.routes';
+import { practiceRouter } from './practice.routes';
 
 export function apiRouter(db?: Connection): Router {
   const router = Router();
@@ -15,6 +16,7 @@ export function apiRouter(db?: Connection): Router {
   router.use('/sessions', sessionsRouter());
   router.use('/profile', profileRouter());
   router.use('/notifications', notificationsRouter());
+  router.use('/practice', practiceRouter());
   return router;
 }
 

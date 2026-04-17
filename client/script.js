@@ -12,6 +12,7 @@ import {
     toggleGoalAction,
     removeGoalAction,
     addSessionAction,
+    submitPracticeAction,
     saveProfileAction,
     uploadAvatarAction,
     markAllReadAction,
@@ -19,15 +20,6 @@ import {
 } from './src/lib/state/asyncActions.js';
 
 // --- Constants & dummy Data --- //
-const weeklyData = [
-  { day: 'Mon', hours: 2.5 },
-  { day: 'Tue', hours: 3.2 },
-  { day: 'Wed', hours: 1.8 },
-  { day: 'Thu', hours: 4.0 },
-  { day: 'Fri', hours: 2.9 },
-  { day: 'Sat', hours: 3.5 },
-  { day: 'Sun', hours: 1.2 },
-];
 const subjectPerformance = [
   { subject: 'Math', score: 72, color: '#4F46E5' },
   { subject: 'Science', score: 58, color: '#22D3EE' },
@@ -49,6 +41,7 @@ const recommendedSkills = [
 ];
 const allInterests = ['Web Dev', 'AI', 'Data Science', 'Mobile', 'DevOps', 'UI/UX', 'Blockchain', 'Cybersecurity'];
 const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
+const practiceTopics = ['JavaScript', 'React', 'Node.js', 'Data Structures', 'Algorithms', 'System Design', 'Databases', 'Math'];
 
 let chartInstance = null;
 let progressChartInstance = null;
@@ -56,6 +49,15 @@ let progressChartInstance = null;
 // --- Utilities & Engine --- //
 function toast(msg, type = 'success') {
     showToast(msg, type);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function updateTheme() {
@@ -95,13 +97,39 @@ function initAfterRender() {
         const ctx = document.getElementById('dashboardChart');
         if (ctx) {
             if(chartInstance) chartInstance.destroy();
+            const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const weekMinutes = [0, 0, 0, 0, 0, 0, 0];
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() + mondayOffset);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+
+            state.sessions.forEach((s) => {
+                const d = new Date(s.date);
+                if (Number.isNaN(d.getTime())) return;
+                if (d >= monday && d <= sunday) {
+                    const idx = d.getDay() === 0 ? 6 : d.getDay() - 1; // Mon=0…Sun=6
+                    weekMinutes[idx] += Number(s.duration || 0);
+                }
+            });
+
+            const weeklyChartData = DAY_LABELS.map((day, i) => ({
+                day,
+                hours: Math.round((weekMinutes[i] / 60) * 10) / 10,
+            }));
+
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: weeklyData.map(d => d.day),
+                    labels: weeklyChartData.map((d) => d.day),
                     datasets: [{
                         label: 'Study Hours',
-                        data: weeklyData.map(d => d.hours),
+                        data: weeklyChartData.map((d) => d.hours),
                         backgroundColor: function(context) {
                             const chart = context.chart;
                             const {ctx, chartArea} = chart;
@@ -211,12 +239,27 @@ function CircularProgress(value, label, color) {
 // --- Layouts & Sections --- //
 function renderDashboard() {
     const user = state.user;
-    
+
+    const totalMinutes = state.sessions.reduce((sum, session) => sum + Number(session.duration || 0), 0);
+    const totalHoursDisplay = (totalMinutes / 60).toFixed(1).replace(/\.0$/, '');
+    const doneGoals = state.goals.filter((goal) => goal.done).length;
+    const totalGoals = state.goals.length;
+    const goalsStat = totalGoals > 0 ? `${doneGoals} / ${totalGoals}` : '—';
+    const normalizedProgress = user.progress instanceof Map
+      ? Object.fromEntries(user.progress.entries())
+      : (user.progress && typeof user.progress === 'object' ? user.progress : {});
+    const progressValues = Object.values(normalizedProgress)
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+    const avgScore = progressValues.length
+      ? Math.round(progressValues.reduce((sum, value) => sum + value, 0) / progressValues.length)
+      : 0;
+
     let statsHtml = `
-      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3"><i data-lucide="clock" class="text-indigo-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">142h</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total Hours</p>`)}
+      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3"><i data-lucide="clock" class="text-indigo-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">${totalHoursDisplay}h</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total Hours</p>`)}
       ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center mb-3"><i data-lucide="flame" class="text-orange-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">${user.streak} days</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Day Streak</p>`)}
-      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3"><i data-lucide="target" class="text-emerald-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">2 / 4</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Goals Done</p>`)}
-      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-3"><i data-lucide="trending-up" class="text-cyan-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">58%</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Avg Score</p>`)}
+      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3"><i data-lucide="target" class="text-emerald-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">${goalsStat}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Goals Done</p>`)}
+      ${Card("p-4", `<div class="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-3"><i data-lucide="trending-up" class="text-cyan-500 w-4 h-4"></i></div><p class="text-xl font-bold text-slate-800 dark:text-white">${avgScore}%</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Avg Score</p>`)}
     `;
 
     let skillsHtml = recommendedSkills.map(s => `
@@ -428,24 +471,81 @@ window.addSession = async () => {
 }
 
 function renderPractice() {
-    let warning = state.practiceForm.submitted ? `
-        <div class="fade-up mb-6 mt-6">
-            ${Card('p-5 border-amber-200 bg-amber-50 dark:bg-amber-500/5', '<p class="text-amber-700 dark:text-amber-400 font-bold flex gap-2"><i data-lucide="alert-circle" class="w-5 h-5"></i> Backend Required</p>')}
-        </div>
-    ` : '';
+    const selectedTopic = state.practiceForm.selectedTopic;
+    const customTopic = state.practiceForm.customTopic;
+    const hasConversation = state.practiceForm.conversation.length > 0;
+    const topicOptions = practiceTopics
+        .map((topic) => `<option value="${topic}" ${selectedTopic === topic ? 'selected' : ''}>${topic}</option>`)
+        .join('');
+    const chatHtml = state.practiceForm.conversation.map((message) => {
+        const isUser = message.role === 'user';
+        return `
+            <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
+                    isUser
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-100'
+                }">${escapeHtml(message.content)}</div>
+            </div>
+        `;
+    }).join('');
+
+    let evaluationHtml = '';
+    const evaluation = state.practiceForm.latestResponse?.evaluation;
+    if (evaluation) {
+        evaluationHtml = Card('p-4 mt-4', `
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-slate-800 dark:text-white text-sm">Evaluation</h3>
+                ${Badge('indigo', `${evaluation.score}/100`)}
+            </div>
+            <p class="text-xs text-slate-500 mb-3">Difficulty: ${escapeHtml(evaluation.difficulty)}</p>
+            <div class="space-y-2 text-sm">
+                <p class="text-emerald-600 dark:text-emerald-400"><strong>Strengths:</strong> ${escapeHtml(evaluation.strengths.join(', '))}</p>
+                <p class="text-amber-600 dark:text-amber-400"><strong>Improvements:</strong> ${escapeHtml(evaluation.improvements.join(', '))}</p>
+                <p class="text-slate-600 dark:text-slate-300"><strong>Ideal answer:</strong> ${escapeHtml(evaluation.idealAnswer)}</p>
+            </div>
+        `);
+    }
+
+    const nextQuestion = state.practiceForm.latestResponse?.nextQuestion
+        ? `<p class="text-sm text-slate-600 dark:text-slate-300 mt-3"><strong>Next question:</strong> ${escapeHtml(state.practiceForm.latestResponse.nextQuestion)}</p>`
+        : '';
+
     return `
     <div class="space-y-6 fade-up">
         <h2 class="text-lg font-bold text-slate-800 dark:text-white">Practice Zone</h2>
         ${Card('p-5', `
-            <textarea id="practiceInput" placeholder="Enter problem..." rows="5" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-mono" oninput="state.practiceForm.input = this.value">${state.practiceForm.input}</textarea>
-            <div class="flex justify-end mt-3">${Button('gradient', '', 'onclick="submitPractice()"', '<i data-lucide="send" class="w-3 h-3"></i> Submit')}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <select onchange="state.practiceForm.selectedTopic=this.value; render()" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">
+                    ${topicOptions}
+                    <option value="Custom" ${selectedTopic === 'Custom' ? 'selected' : ''}>Custom topic</option>
+                </select>
+                ${selectedTopic === 'Custom'
+                    ? `<input value="${escapeHtml(customTopic)}" oninput="state.practiceForm.customTopic=this.value" placeholder="Enter custom topic" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">`
+                    : ''}
+            </div>
+
+            <div class="space-y-3 max-h-72 overflow-y-auto pr-1 mb-4">
+                ${chatHtml || '<p class="text-sm text-slate-500 dark:text-slate-400">Choose a topic and click start to get your first question.</p>'}
+            </div>
+
+            <textarea id="practiceInput" placeholder="${hasConversation ? 'Type your answer...' : 'Click start to get your first question'}" rows="4" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-mono" oninput="state.practiceForm.answer = this.value">${escapeHtml(state.practiceForm.answer)}</textarea>
+            <div class="flex justify-end mt-3">
+                ${Button(
+                    'gradient',
+                    '',
+                    'onclick="submitPractice()"',
+                    `<i data-lucide="send" class="w-3 h-3"></i> ${hasConversation ? 'Submit Answer' : 'Start Practice'}`,
+                    state.practiceForm.loading
+                )}
+            </div>
+            ${evaluationHtml}
+            ${nextQuestion}
         `)}
-        ${warning}
     </div>`;
 }
-window.submitPractice = () => {
-    if(!state.practiceForm.input.trim()) return toast('Enter problem', 'error');
-    state.practiceForm.submitted = true; toast('Evaluation needs backend', 'info'); render();
+window.submitPractice = async () => {
+    await submitPracticeAction();
 }
 
 function renderQuotes() {

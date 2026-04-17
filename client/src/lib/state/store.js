@@ -42,7 +42,15 @@ export const state = {
   goalsForm: { text: '', modalOpen: false },
   plannerForm: { date: '', subject: 'Coding', duration: 60, modalOpen: false },
   profileForm: { editing: false, name: '', email: '', skillLevel: '', interests: [] },
-  practiceForm: { input: '', submitted: false },
+  practiceForm: {
+    selectedTopic: 'JavaScript',
+    customTopic: '',
+    answer: '',
+    conversation: [],
+    latestResponse: null,
+    loading: false,
+    submitted: false,
+  },
   navbar: { showNotif: false },
 };
 

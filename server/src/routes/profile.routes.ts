@@ -11,6 +11,7 @@ export function profileRouter(): Router {
   router.get('/', profile.get);
   router.patch('/', profile.update);
   router.patch('/preferences', profile.updatePreferences);
+  router.post('/avatar', profile.uploadAvatar);
 
   return router;
 }

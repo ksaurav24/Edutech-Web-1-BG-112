@@ -499,10 +499,12 @@ function renderProfile() {
             </div>
             <div class="flex items-center gap-5 mb-6">
                 <div class="relative w-20 h-20 flex-shrink-0">
-                  ${state.user.avatar
-                    ? `<img src="${state.user.avatar}" alt="avatar" class="w-20 h-20 rounded-2xl object-cover">`
-                    : `<div class="w-20 h-20 rounded-2xl bg-indigo-500 flex items-center justify-center text-white text-2xl font-bold">${u.name.charAt(0)}</div>`
-                  }
+                  ${(() => {
+                    const safeAvatar = state.user.avatar ? String(state.user.avatar).replace(/"/g, '%22') : null;
+                    return safeAvatar
+                      ? `<img src="${safeAvatar}" alt="avatar" class="w-20 h-20 rounded-2xl object-cover">`
+                      : `<div class="w-20 h-20 rounded-2xl bg-indigo-500 flex items-center justify-center text-white text-2xl font-bold">${u.name.charAt(0)}</div>`;
+                  })()}
                   <label for="avatarInput" class="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center cursor-pointer shadow-md transition-colors">
                     <i data-lucide="camera" class="w-3.5 h-3.5 text-white"></i>
                   </label>
@@ -538,7 +540,18 @@ window.toggleTheme = () => { state.theme = state.theme === 'dark' ? 'light' : 'd
 window.handleAvatarChange = async (input) => {
     const file = input.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        toast('Please select an image file', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        toast('Image must be smaller than 5 MB', 'error');
+        input.value = '';
+        return;
+    }
     await uploadAvatarAction(file);
+    input.value = '';
 };
 
 // --- Shell Sub-components --- //

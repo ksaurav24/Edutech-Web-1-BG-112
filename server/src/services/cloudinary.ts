@@ -8,6 +8,9 @@ cloudinary.config({
 });
 
 export async function uploadImage(dataUrl: string, folder: string): Promise<string> {
+  if (!env.cloudinaryCloudName || !env.cloudinaryApiKey || !env.cloudinaryApiSecret) {
+    throw new Error('Cloudinary credentials are not configured');
+  }
   const result = await cloudinary.uploader.upload(dataUrl, {
     folder,
     resource_type: 'image',

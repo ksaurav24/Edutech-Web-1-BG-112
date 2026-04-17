@@ -1,3 +1,22 @@
+import { state, registerRender } from './src/lib/state/store.js';
+import { showToast } from './src/lib/ui/toast.js';
+import { applyAuthGuard } from './src/router/routeGuards.js';
+import { ensureValidSection } from './src/router/sections.js';
+import {
+    configureAsyncActions,
+    bootstrapAuthAction,
+    loginAction,
+    signupAction,
+    forgotPasswordAction,
+    addGoalAction,
+    toggleGoalAction,
+    removeGoalAction,
+    addSessionAction,
+    saveProfileAction,
+    markAllReadAction,
+    logoutAction,
+} from './src/lib/state/asyncActions.js';
+
 // --- Constants & dummy Data --- //
 const weeklyData = [
   { day: 'Mon', hours: 2.5 },
@@ -30,53 +49,12 @@ const recommendedSkills = [
 const allInterests = ['Web Dev', 'AI', 'Data Science', 'Mobile', 'DevOps', 'UI/UX', 'Blockchain', 'Cybersecurity'];
 const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
 
-// --- Application State --- //
-const state = {
-  theme: 'dark',
-  page: 'login', // login, signup, forgot, app
-  activeSection: 'dashboard',
-  mobileOpen: false,
-  user: {
-      name: 'Alex Johnson', email: 'alex@example.com', avatar: null,
-      skillLevel: 'Intermediate', interests: ['Web Dev', 'AI', 'Data Science'],
-      streak: 7, totalHours: 142, joinDate: 'Jan 2025'
-  },
-  goals: [
-      { id: 1, text: 'Complete React course', done: true },
-      { id: 2, text: 'Solve 20 DSA problems', done: false },
-      { id: 3, text: 'Build portfolio project', done: false },
-  ],
-  progress: { Math: 72, Science: 58, Coding: 85, English: 45, History: 30 },
-  notifications: [
-      { id: 1, text: 'You completed 1 task today', time: '2m ago', read: false },
-      { id: 2, text: 'Keep going! 7-day streak active', time: '1h ago', read: false },
-  ],
-  sessions: [
-      { date: '2025-04-01', subject: 'Coding', duration: 90 },
-      { date: '2025-04-04', subject: 'Coding', duration: 120 },
-  ],
-  // Temp states for forms
-  loginForm: { email: '', password: '', show: false, loading: false },
-  signupForm: { name: '', email: '', password: '', show: false, loading: false, selectedInterests: ['Web Dev', 'AI'], level: 'Intermediate' },
-  forgotForm: { email: '', sent: false },
-  goalsForm: { text: '', modalOpen: false },
-  plannerForm: { date: '', subject: 'Coding', duration: 60, modalOpen: false },
-  profileForm: { editing: false, name: '', email: '', skillLevel: '', interests: [] },
-  practiceForm: { input: '', submitted: false },
-  navbar: { showNotif: false }
-};
-
 let chartInstance = null;
 let progressChartInstance = null;
 
 // --- Utilities & Engine --- //
 function toast(msg, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const el = document.createElement('div');
-    el.className = `toast flex items-start gap-2`;
-    el.innerHTML = `<span>${type === 'error' ? '❌' : (type==='info'?'ℹ️':'✅')}</span><span>${msg}</span>`;
-    container.appendChild(el);
-    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 3000);
+    showToast(msg, type);
 }
 
 function updateTheme() {
@@ -85,6 +63,8 @@ function updateTheme() {
 }
 
 function render() {
+    applyAuthGuard(state);
+    state.activeSection = ensureValidSection(state.activeSection);
     updateTheme();
     const root = document.getElementById('root');
     let html = '';
@@ -101,6 +81,12 @@ function render() {
     
     // Initialize specific dynamic elements based on section (like Charts)
     initAfterRender();
+}
+
+// Inline onclick handlers run in the global scope, so expose app state/render.
+if (typeof window !== 'undefined') {
+    window.state = state;
+    window.render = render;
 }
 
 function initAfterRender() {
@@ -379,12 +365,14 @@ function renderGoals() {
     </div>`;
 }
 
-window.toggleGoal = (id) => { state.goals = state.goals.map(g => g.id === id ? {...g, done: !g.done} : g); render(); };
-window.removeGoal = (id) => { state.goals = state.goals.filter(g => g.id !== id); toast('Goal removed', 'info'); render(); };
-window.addGoal = () => { 
-    if(!state.goalsForm.text.trim()) return; 
-    state.goals.push({id: Date.now(), text: state.goalsForm.text, done: false}); 
-    state.goalsForm.text = ''; state.goalsForm.modalOpen = false; toast('Goal added!'); render(); 
+window.toggleGoal = async (id) => {
+    await toggleGoalAction(id);
+};
+window.removeGoal = async (id) => {
+    await removeGoalAction(id);
+};
+window.addGoal = async () => {
+    await addGoalAction();
 };
 
 function renderPlanner() {
@@ -434,10 +422,8 @@ function renderPlanner() {
     </div>`;
 }
 
-window.addSession = () => {
-    if(!state.plannerForm.date) return toast('Pick a date', 'error');
-    state.sessions.push({...state.plannerForm, duration: Number(state.plannerForm.duration)});
-    state.plannerForm.modalOpen = false; toast('Session added'); render();
+window.addSession = async () => {
+    await addSessionAction();
 }
 
 function renderPractice() {
@@ -530,7 +516,9 @@ function renderProfile() {
 }
 window.editProfile = () => { state.profileForm = { ...state.profileForm, editing: true, name: state.user.name, email: state.user.email, skillLevel: state.user.skillLevel, interests: [...state.user.interests] }; render(); }
 window.cancelProfileEdit = () => { state.profileForm.editing = false; render(); }
-window.saveProfile = () => { state.user = { ...state.user, name: state.profileForm.name, email: state.profileForm.email, skillLevel: state.profileForm.skillLevel, interests: state.profileForm.interests }; state.profileForm.editing = false; toast('Profile updated'); render(); }
+window.saveProfile = async () => {
+    await saveProfileAction();
+}
 window.toggleProfileInterest = (i) => { 
     if(state.profileForm.interests.includes(i)) state.profileForm.interests = state.profileForm.interests.filter(x => x!==i);
     else state.profileForm.interests.push(i);
@@ -578,7 +566,7 @@ function renderSidebar(isMobile = false) {
       </div>
       <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto scrollbar-hide">${itemsHtml}</nav>
       <div class="p-3 border-t border-slate-200 dark:border-slate-800">
-        <button onclick="state.page='login'; render();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 cursor-pointer">
+        <button onclick="logout()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 cursor-pointer">
           <i data-lucide="log-out" class="w-4 h-4"></i> <span>Sign Out</span>
         </button>
       </div>
@@ -625,7 +613,9 @@ function renderNavbar() {
         </div>
     </header>`;
 }
-window.markAllRead = () => { state.notifications = state.notifications.map(n => ({...n, read:true})); render(); }
+window.markAllRead = async () => {
+    await markAllReadAction();
+}
 
 function renderAppLayout() {
     let sectionHtml = '';
@@ -694,10 +684,9 @@ function renderLoginPage() {
       </div>
     </div>`;
 }
-window.handleLogin = (e) => {
+window.handleLogin = async (e) => {
     e.preventDefault();
-    state.loginForm.loading = true; render();
-    setTimeout(() => { state.loginForm.loading = false; toast('Welcome back!'); state.page = 'app'; render(); }, 800);
+    await loginAction();
 };
 
 function renderSignupPage() {
@@ -719,10 +708,9 @@ function renderSignupPage() {
       </div>
     </div>`;
 }
-window.handleSignup = (e) => {
+window.handleSignup = async (e) => {
     e.preventDefault();
-    state.signupForm.loading = true; render();
-    setTimeout(() => { state.signupForm.loading = false; state.user.name = state.signupForm.name || state.user.name; toast('Account created!'); state.page = 'app'; render(); }, 800);
+    await signupAction();
 }
 
 function renderForgotPage() {
@@ -733,7 +721,7 @@ function renderForgotPage() {
         ${!state.forgotForm.sent ? `
             <div class="mb-6"><h1 class="text-xl font-bold text-white mb-1">Forgot password?</h1></div>
             <form onsubmit="handleForgot(event)" class="space-y-4">
-               <input type="email" placeholder="alex@example.com" class="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white" required>
+                <input type="email" value="${state.forgotForm.email}" oninput="state.forgotForm.email=this.value" placeholder="alex@example.com" class="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white" required>
                ${Button('gradient', 'w-full', 'type="submit"', 'Send Link')}
             </form>
         ` : `
@@ -742,12 +730,22 @@ function renderForgotPage() {
       </div>
     </div>`;
 }
-window.handleForgot = (e) => {
+window.handleForgot = async (e) => {
     e.preventDefault();
-    setTimeout(() => { state.forgotForm.sent = true; toast('Reset link sent!'); render(); }, 500);
+    await forgotPasswordAction();
 }
 
-// Initial Boot
-document.addEventListener('DOMContentLoaded', () => {
+window.logout = () => {
+    logoutAction();
+};
+
+export function bootstrapApp() {
+    registerRender(render);
+    configureAsyncActions({
+        state,
+        render,
+        toast,
+    });
     render();
-});
+    bootstrapAuthAction().finally(render);
+}

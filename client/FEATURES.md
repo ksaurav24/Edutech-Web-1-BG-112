@@ -1,7 +1,7 @@
 # Feature Roadmap — Static → Dynamic
 
-> Current state: frontend-only (React + Vite). All data is local state and resets on refresh.
-> Future state: connect a backend (Node/Express, Firebase, etc.) to make features persistent and real.
+> Current state: plain JavaScript frontend with partial backend integration. Auth, Goals, Study Planner, Profile, and Notifications now use centralized API modules.
+> Next state: extend backend integration to remaining modules (Dashboard, Progress, Practice Zone, Quotes) and finalize full persistence.
 
 ---
 
@@ -9,10 +9,10 @@
 
 | Feature | Static (Now) | Dynamic (With Backend) |
 |---|---|---|
-| Login form | UI only, no validation | JWT / session auth via API |
-| Signup form | Stores in React state | Creates user in DB |
+| Login form | **Integrated (API-backed)** | JWT / session auth via API |
+| Signup form | **Integrated (API-backed)** | Creates user in DB |
 | Google / GitHub login | Button UI only | OAuth 2.0 integration |
-| Forgot password | Shows success UI | Sends real reset email |
+| Forgot password | **Integrated (API-backed)** | Sends real reset email |
 | Profile picture upload | Preview via `URL.createObjectURL` | Upload to S3 / Cloudinary |
 | Remember me | Checkbox UI only | Persistent session / refresh token |
 
@@ -46,11 +46,11 @@
 
 | Feature | Static (Now) | Dynamic (With Backend) |
 |---|---|---|
-| Add goal | Adds to React state only | POST to goals API, stored in DB |
-| Mark complete | Toggles local state | PATCH request updates DB record |
-| Delete goal | Removes from local state | DELETE request to API |
+| Add goal | **Integrated (API-backed)** | POST to goals API, stored in DB |
+| Mark complete | **Integrated (API-backed)** | PATCH request updates DB record |
+| Delete goal | **Integrated (API-backed)** | DELETE request to API |
 | Progress bar | Computed from local array | Synced with server-side goal data |
-| Goals list | Resets on refresh | Persisted per user account |
+| Goals list | **Integrated (API-backed)** | Persisted per user account |
 
 ---
 
@@ -59,8 +59,8 @@
 | Feature | Static (Now) | Dynamic (With Backend) |
 |---|---|---|
 | Calendar view | Highlights hardcoded dates | Fetches sessions from DB |
-| Add study session | Adds to local state | POST to sessions API |
-| Session list | Dummy + local state | Fetched and filtered by user/date |
+| Add study session | **Integrated (API-backed)** | POST to sessions API |
+| Session list | **Integrated (API-backed)** | Fetched and filtered by user/date |
 | Duration tracking | UI input only | Stored and aggregated for analytics |
 
 ---
@@ -80,9 +80,9 @@
 
 | Feature | Static (Now) | Dynamic (With Backend) |
 |---|---|---|
-| Edit name / email | Updates local context only | PATCH to user profile API |
-| Skill level selector | Stored in React state | Saved to user record in DB |
-| Interests chips | Local state toggle | Persisted, used for recommendations |
+| Edit name / email | **Integrated (API-backed)** | PATCH to user profile API |
+| Skill level selector | **Integrated (API-backed)** | Saved to user record in DB |
+| Interests chips | **Integrated (API-backed)** | Persisted, used for recommendations |
 | Avatar upload | Preview only (object URL) | Uploaded to cloud storage |
 | Theme preference | React state, resets on refresh | Saved to user preferences in DB |
 
@@ -93,7 +93,7 @@
 | Feature | Static (Now) | Dynamic (With Backend) |
 |---|---|---|
 | Notification panel | Hardcoded static messages | Real-time via WebSocket or polling |
-| Mark all read | Toggles local state | PATCH to notifications API |
+| Mark all read | **Integrated (API-backed)** | PATCH to notifications API |
 | Unread badge count | Counted from local array | Server-driven unread count |
 
 ---

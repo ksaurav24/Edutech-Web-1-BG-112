@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(find D:\\\\\\\\code\\\\\\\\Edutech-Web-1-BG-112\\\\\\\\client -type f -name \"*\")"
+    ]
+  }
+}
